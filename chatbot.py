@@ -1,16 +1,26 @@
 # -*- coding: utf-8 -*-
 import os
 import re
-import sys
 import requests
 from datetime import datetime
 import google.generativeai as genai
+import sys
 
-# Load API keys from environment variables
 openweather_api_key = os.environ.get('OPENWEATHER_API_KEY')
 google_api_key = os.environ.get('GOOGLE_API_KEY')
 
-# Configure Google Generative AI
+print(f"DEBUG: OPENWEATHER_API_KEY is {'set' if openweather_api_key else 'NOT set'}")
+print(f"DEBUG: GOOGLE_API_KEY is {'set' if google_api_key else 'NOT set'}")
+
+if not openweather_api_key:
+    print("ERROR: OPENWEATHER_API_KEY missing. Exiting.")
+    sys.exit(1)
+
+if not google_api_key:
+    print("ERROR: GOOGLE_API_KEY missing. Exiting.")
+    sys.exit(1)
+
+# Then proceed with the rest of your code:
 genai.configure(api_key=google_api_key)
 model = genai.GenerativeModel("gemini-2.0-flash-exp")
 
