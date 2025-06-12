@@ -1,32 +1,31 @@
 # -*- coding: utf-8 -*-
-"""chatbot.ipynb
 
 import os
+import re
+import requests
+from datetime import datetime
+import google.generativeai as genai
 
-# Set environment variables (optional, but good practice)
-os.environ['OPENWEATHER_API_KEY'] = openweather_api_key
-os.environ['GOOGLE_API_KEY'] = google_api_key
+# Get API keys from environment variables
+openweather_api_key = os.getenv('OPENWEATHER_API_KEY')
+google_api_key = os.getenv('GOOGLE_API_KEY')
 
 # Configure Google Generative AI
 genai.configure(api_key=google_api_key)
 model = genai.GenerativeModel("gemini-2.0-flash-exp")
 
-# Fetch current date
 def get_current_date():
     now = datetime.now()
     return f"Today is {now.strftime('%A, %B %d, %Y')}."
 
-# Check if input is weather-related
 def is_weather_query(text):
     pattern = re.compile(r"\b(weather|temperature|forecast|rain|snow|sunny|cloudy)\b", re.IGNORECASE)
     return bool(pattern.search(text))
 
-# Check if input is date-related
 def is_date_query(text):
     pattern = re.compile(r"\b(today|date|day|time)\b", re.IGNORECASE)
     return bool(pattern.search(text))
 
-# Extract city from the input
 def extract_city(text):
     match = re.search(r"(?:in|for)\s+([a-zA-Z\s]+)", text, re.IGNORECASE)
     if match:
@@ -41,7 +40,6 @@ def extract_city(text):
             return city_candidate
     return None
 
-# Fetch weather using OpenWeatherMap API
 def get_weather(city):
     url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={openweather_api_key}&units=metric"
     response = requests.get(url)
@@ -53,7 +51,6 @@ def get_weather(city):
     else:
         return f"Sorry, couldn't fetch weather for {city}."
 
-# Query Google AI (Gemini)
 def query_google_ai(prompt):
     context_prompt = f"""
 You are a helpful assistant answering general knowledge questions. Assume today's date is {datetime.now().strftime('%A, %B %d, %Y')}.
@@ -64,7 +61,6 @@ User asked: "{prompt}"
     response = model.generate_content(context_prompt)
     return response.text
 
-# Chatbot dispatcher
 def chatbot(user_input):
     if is_date_query(user_input):
         return get_current_date()
@@ -77,13 +73,12 @@ def chatbot(user_input):
     else:
         return query_google_ai(user_input)
 
-# Run the bot interactively
-print("🤖 Welcome to Weather + AI Bot! Type 'exit' or 'quit' to stop.")
-
-while True:
-    user_input = input("> You: ")
-    if user_input.lower() in ['exit', 'quit']:
-        print("👋 Goodbye!")
-        break
-    response = chatbot(user_input)
-    print(f"< Bot: {response}\n")
+if __name__ == "__main__":
+    print("🤖 Welcome to Weather + AI Bot! Type 'exit' or 'quit' to stop.")
+    while True:
+        user_input = input("> You: ")
+        if user_input.lower() in ['exit', 'quit']:
+            print("👋 Goodbye!")
+            break
+        response = chatbot(user_input)
+        print(f"< Bot: {response}\n")
