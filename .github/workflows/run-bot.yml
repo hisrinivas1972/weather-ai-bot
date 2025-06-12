@@ -32,9 +32,9 @@ jobs:
           echo "OPENWEATHER_API_KEY is set: ${{ secrets.OPENWEATHER_API_KEY != '' }}"
           echo "GOOGLE_API_KEY is set: ${{ secrets.GOOGLE_API_KEY != '' }}"
 
-      - name: Run chatbot with predefined input
+      - name: Run chatbot script (predefined inputs)
         run: |
-          python chatbot.py "Tell me a joke" > output.txt
+          python chatbot.py
           cat output.txt
 
       - name: Commit and push output.txt if changed
