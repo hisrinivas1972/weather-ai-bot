@@ -4,8 +4,8 @@ on:
   push:
     branches:
       - main
-      - chatbot-branch  # optional: run on multiple branches
-  workflow_dispatch:     # allows manual trigger
+      - chatbot-branch
+  workflow_dispatch:
 
 jobs:
   run-chatbot:
@@ -27,8 +27,15 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run chatbot
-        run: python chatbot.py
+      - name: Debug env vars
+        run: |
+          echo "OPENWEATHER_API_KEY is set: ${{ secrets.OPENWEATHER_API_KEY != '' }}"
+          echo "GOOGLE_API_KEY is set: ${{ secrets.GOOGLE_API_KEY != '' }}"
+
+      - name: Run chatbot with predefined input
+        run: |
+          python chatbot.py "Tell me a joke" > output.txt
+          cat output.txt
 
       - name: Commit and push output.txt if changed
         run: |
