@@ -80,6 +80,14 @@ def chatbot(user_input):
     else:
         return query_google_ai(user_input)
 
+# Predefined inputs for non-interactive runs
+predefined_inputs = [
+    "What's the weather in London?",
+    "What is today's date?",
+    "Tell me a joke.",
+    "What is the temperature in New York?"
+]
+
 # Entry point with command line support
 if __name__ == "__main__":
     if len(sys.argv) > 1:
@@ -87,15 +95,11 @@ if __name__ == "__main__":
         response = chatbot(user_input)
         print(f"< Bot: {response}")
     else:
-        print("🤖 Welcome to Weather + AI Bot! Type 'exit' or 'quit' to stop.")
-        while True:
-            try:
-                user_input = input("> You: ")
-            except EOFError:
-                print("\n👋 Goodbye!")
-                break
-            if user_input.lower() in ['exit', 'quit']:
-                print("👋 Goodbye!")
-                break
-            response = chatbot(user_input)
-            print(f"< Bot: {response}\n")
+        # Run all predefined inputs automatically
+        with open("output.txt", "w", encoding="utf-8") as f:
+            for user_input in predefined_inputs:
+                print(f"> You: {user_input}")
+                response = chatbot(user_input)
+                print(f"< Bot: {response}\n")
+                f.write(f"> You: {user_input}\n< Bot: {response}\n\n")
+        print("Responses saved to output.txt")
