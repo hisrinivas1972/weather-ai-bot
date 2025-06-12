@@ -1,0 +1,31 @@
+name: Run Weather Chatbot
+
+on:
+  push:
+    branches:
+      - main
+      - chatbot-branch  # optional: run on multiple branches
+  workflow_dispatch:     # allows manual trigger
+
+jobs:
+  run-chatbot:
+    runs-on: ubuntu-latest
+
+    env:
+      OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.10
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run chatbot
+        run: python bot.py
