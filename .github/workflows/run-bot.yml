@@ -38,8 +38,11 @@ jobs:
           cat output.txt
 
       - name: Commit and push output.txt if changed
+        env:
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${PAT_TOKEN}@github.com/hisrinivas1972/weather-ai-bot.git
           git add output.txt
           git diff --quiet --cached || (git commit -m "Update chatbot output" && git push)
