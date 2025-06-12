@@ -1,0 +1,2 @@
+requests
+google-generativeai==1.7.0
