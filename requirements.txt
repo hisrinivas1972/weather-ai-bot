@@ -1,2 +1,6 @@
-requests
-google-generativeai==0.8.5
+import os
+import re
+import requests
+from datetime import datetime
+import google.generativeai as genai
+from google.colab import userdata
