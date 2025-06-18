@@ -1,60 +1,63 @@
-# -*- coding: utf-8 -*-
 import os
 import re
 import requests
 from datetime import datetime
 import google.generativeai as genai
-import sys
+from google.colab import userdata
 
-openweather_api_key = os.environ.get('OPENWEATHER_API_KEY')
-google_api_key = os.environ.get('GOOGLE_API_KEY')
+# Load API keys securely from Colab Secrets
+openweather_api_key = userdata.get('OPENWEATHER_API_KEY')
+google_api_key = userdata.get('GOOGLE_API_KEY')
 
-print(f"DEBUG: OPENWEATHER_API_KEY is {'set' if openweather_api_key else 'NOT set'}")
-print(f"DEBUG: GOOGLE_API_KEY is {'set' if google_api_key else 'NOT set'}")
+# Set environment variables (optional)
+os.environ['OPENWEATHER_API_KEY'] = openweather_api_key
+os.environ['GOOGLE_API_KEY'] = google_api_key
 
-if not openweather_api_key:
-    print("ERROR: OPENWEATHER_API_KEY missing. Exiting.")
-    sys.exit(1)
-
-if not google_api_key:
-    print("ERROR: GOOGLE_API_KEY missing. Exiting.")
-    sys.exit(1)
-
-# Then proceed with the rest of your code:
+# Configure Gemini
 genai.configure(api_key=google_api_key)
 model = genai.GenerativeModel("gemini-2.0-flash-exp")
 
-# Fetch current date
-def get_current_date():
-    now = datetime.now()
-    return f"Today is {now.strftime('%A, %B %d, %Y')}."
+# -------- INTENT DETECTORS --------
 
-# Check if input is weather-related
+def is_date_query(text):
+    pattern = re.compile(
+        r"\b(what(?:'s| is)?\s+(today|date|day)|current\s+(date|day)|today['s]*\s+date|what\s+time\s+is\s+it)\b",
+        re.IGNORECASE
+    )
+    return bool(pattern.search(text))
+
 def is_weather_query(text):
     pattern = re.compile(r"\b(weather|temperature|forecast|rain|snow|sunny|cloudy)\b", re.IGNORECASE)
     return bool(pattern.search(text))
 
-# Check if input is date-related
-def is_date_query(text):
-    pattern = re.compile(r"\b(today|date|day|time)\b", re.IGNORECASE)
-    return bool(pattern.search(text))
+# -------- CITY EXTRACTION (IMPROVED) --------
 
-# Extract city from the input
 def extract_city(text):
+    noise_words = {"today", "now", "please", "right", "currently", "tomorrow", "this", "week", "tonight"}
+
+    # Try extracting city after "in" or "for"
     match = re.search(r"(?:in|for)\s+([a-zA-Z\s]+)", text, re.IGNORECASE)
     if match:
         city = match.group(1).strip()
-        city = re.sub(r"[?.!,]*$", "", city)
-        return city
     else:
+        # Fallback: last word
         tokens = text.strip().split()
-        if tokens:
-            city_candidate = tokens[-1]
-            city_candidate = re.sub(r"[?.!,]*$", "", city_candidate)
-            return city_candidate
-    return None
+        city = tokens[-1]
 
-# Fetch weather using OpenWeatherMap API
+    # Clean punctuation
+    city = re.sub(r"[?.!,]*$", "", city)
+
+    # Remove any noise words from the end
+    words = city.lower().split()
+    filtered = [word for word in words if word not in noise_words]
+
+    if not filtered:
+        return None
+
+    return ' '.join(filtered).title()
+
+# -------- WEATHER AGENT --------
+
 def get_weather(city):
     url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={openweather_api_key}&units=metric"
     response = requests.get(url)
@@ -64,9 +67,17 @@ def get_weather(city):
         desc = data['weather'][0]['description']
         return f"The weather in {city} is {desc} with a temperature of {temp:.2f}°C."
     else:
+        print(f"[Debug] Weather API error: {response.status_code} | {response.json()}")
         return f"Sorry, couldn't fetch weather for {city}."
 
-# Query Google AI (Gemini)
+# -------- DATE AGENT --------
+
+def get_current_date():
+    now = datetime.now()
+    return f"Today is {now.strftime('%A, %B %d, %Y')}."
+
+# -------- GENERAL AI AGENT --------
+
 def query_google_ai(prompt):
     context_prompt = f"""
 You are a helpful assistant answering general knowledge questions. Assume today's date is {datetime.now().strftime('%A, %B %d, %Y')}.
@@ -75,41 +86,33 @@ Respond clearly and concisely.
 User asked: "{prompt}"
 """
     response = model.generate_content(context_prompt)
-    return response.text
+    return response.text.strip()
 
-# Chatbot dispatcher
+# -------- DISPATCHER --------
+
 def chatbot(user_input):
     if is_date_query(user_input):
+        print("[Debug] Routed to Date Agent")
         return get_current_date()
     elif is_weather_query(user_input):
+        print("[Debug] Routed to Weather Agent")
         city = extract_city(user_input)
         if city:
             return get_weather(city)
         else:
             return "Please specify a city for the weather query."
     else:
+        print("[Debug] Routed to Gemini AI Agent")
         return query_google_ai(user_input)
 
-# Predefined inputs for non-interactive runs
-predefined_inputs = [
-    "What's the weather in London?",
-    "What is today's date?",
-    "Tell me a joke.",
-    "What is the temperature in New York?"
-]
+# -------- INTERACTIVE LOOP --------
 
-# Entry point with command line support
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        user_input = " ".join(sys.argv[1:])
-        response = chatbot(user_input)
-        print(f"< Bot: {response}")
-    else:
-        # Run all predefined inputs automatically
-        with open("output.txt", "w", encoding="utf-8") as f:
-            for user_input in predefined_inputs:
-                print(f"> You: {user_input}")
-                response = chatbot(user_input)
-                print(f"< Bot: {response}\n")
-                f.write(f"> You: {user_input}\n< Bot: {response}\n\n")
-        print("Responses saved to output.txt")
+print("🤖 Welcome to Weather + AI Bot! Type 'exit' or 'quit' to stop.\n")
+
+while True:
+    user_input = input("> You: ")
+    if user_input.lower() in ['exit', 'quit']:
+        print("👋 Goodbye!")
+        break
+    response = chatbot(user_input)
+    print(f"< Bot: {response}\n")
