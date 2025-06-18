@@ -1,23 +1,26 @@
+%%writefile multi_chatbot.py
+
+
 import os
 import re
 import requests
 from datetime import datetime
 import google.generativeai as genai
-from google.colab import userdata
+import streamlit as st
 
-# Load API keys securely from Colab Secrets
-openweather_api_key = userdata.get('OPENWEATHER_API_KEY')
-google_api_key = userdata.get('GOOGLE_API_KEY')
+# --- Load API keys from environment variables or other secure storage ---
+openweather_api_key = os.getenv('OPENWEATHER_API_KEY')
+google_api_key = os.getenv('GOOGLE_API_KEY')
 
-# Set environment variables (optional)
-os.environ['OPENWEATHER_API_KEY'] = openweather_api_key
-os.environ['GOOGLE_API_KEY'] = google_api_key
+# --- Set environment variables (optional) ---
+os.environ['OPENWEATHER_API_KEY'] = openweather_api_key or ""
+os.environ['GOOGLE_API_KEY'] = google_api_key or ""
 
-# Configure Gemini
+# --- Configure Gemini ---
 genai.configure(api_key=google_api_key)
 model = genai.GenerativeModel("gemini-2.0-flash-exp")
 
-# -------- INTENT DETECTORS --------
+# --- INTENT DETECTORS ---
 
 def is_date_query(text):
     pattern = re.compile(
@@ -30,7 +33,7 @@ def is_weather_query(text):
     pattern = re.compile(r"\b(weather|temperature|forecast|rain|snow|sunny|cloudy)\b", re.IGNORECASE)
     return bool(pattern.search(text))
 
-# -------- CITY EXTRACTION (IMPROVED) --------
+# --- CITY EXTRACTION ---
 
 def extract_city(text):
     noise_words = {"today", "now", "please", "right", "currently", "tomorrow", "this", "week", "tonight"}
@@ -56,7 +59,7 @@ def extract_city(text):
 
     return ' '.join(filtered).title()
 
-# -------- WEATHER AGENT --------
+# --- WEATHER AGENT ---
 
 def get_weather(city):
     url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={openweather_api_key}&units=metric"
@@ -67,16 +70,16 @@ def get_weather(city):
         desc = data['weather'][0]['description']
         return f"The weather in {city} is {desc} with a temperature of {temp:.2f}°C."
     else:
-        print(f"[Debug] Weather API error: {response.status_code} | {response.json()}")
+        st.write(f"[Debug] Weather API error: {response.status_code} | {response.json()}")
         return f"Sorry, couldn't fetch weather for {city}."
 
-# -------- DATE AGENT --------
+# --- DATE AGENT ---
 
 def get_current_date():
     now = datetime.now()
     return f"Today is {now.strftime('%A, %B %d, %Y')}."
 
-# -------- GENERAL AI AGENT --------
+# --- GENERAL AI AGENT ---
 
 def query_google_ai(prompt):
     context_prompt = f"""
@@ -88,31 +91,35 @@ User asked: "{prompt}"
     response = model.generate_content(context_prompt)
     return response.text.strip()
 
-# -------- DISPATCHER --------
+# --- DISPATCHER ---
 
-def chatbot(user_input):
+def chatbot(user_input, debug=False):
     if is_date_query(user_input):
-        print("[Debug] Routed to Date Agent")
+        if debug:
+            st.write("[Debug] Routed to Date Agent")
         return get_current_date()
     elif is_weather_query(user_input):
-        print("[Debug] Routed to Weather Agent")
+        if debug:
+            st.write("[Debug] Routed to Weather Agent")
         city = extract_city(user_input)
         if city:
             return get_weather(city)
         else:
             return "Please specify a city for the weather query."
     else:
-        print("[Debug] Routed to Gemini AI Agent")
+        if debug:
+            st.write("[Debug] Routed to Gemini AI Agent")
         return query_google_ai(user_input)
 
-# -------- INTERACTIVE LOOP --------
+# --- STREAMLIT UI ---
 
-print("🤖 Welcome to Weather + AI Bot! Type 'exit' or 'quit' to stop.\n")
+st.title("🤖 Weather + AI Bot")
+st.markdown("Ask about weather, dates, travel plans, or general AI questions.")
 
-while True:
-    user_input = input("> You: ")
-    if user_input.lower() in ['exit', 'quit']:
-        print("👋 Goodbye!")
-        break
-    response = chatbot(user_input)
-    print(f"< Bot: {response}\n")
+debug_mode = st.checkbox("Show debug info")
+
+user_input = st.text_input("Enter your message:")
+
+if user_input:
+    response = chatbot(user_input, debug=debug_mode)
+    st.markdown(f"**Bot:** {response}")
